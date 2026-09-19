@@ -11,18 +11,6 @@ SAFE_INTENTS = {
     "job_question",
 }
 
-SKILL_ALIASES = {
-    "power bi": "Power BI",
-    "power query": "Power Query",
-    "data vault": "Data Vault 2.0",
-    "data vault 2.0": "Data Vault 2.0",
-    "dimensional modelling": "dimensional modelling",
-    "dimensional modeling": "dimensional modeling",
-    "etl": "ETL/ELT",
-    "elt": "ETL/ELT",
-}
-
-
 
 def _language(result):
     value = str(result.get("language") or "English").lower()
@@ -33,12 +21,29 @@ def _language(result):
     return "en"
 
 
-def _mentioned_skill(text):
-    lowered = (text or "").lower()
-    # Longest aliases first so "data vault 2.0" wins over "data vault".
-    for alias in sorted(SKILL_ALIASES, key=len, reverse=True):
-        if re.search(r"(?<!\w)" + re.escape(alias) + r"(?!\w)", lowered):
-            return SKILL_ALIASES[alias]
+def _flatten_profile_values(value):
+    if isinstance(value, dict):
+        for nested in value.values():
+            yield from _flatten_profile_values(nested)
+    elif isinstance(value, list):
+        for nested in value:
+            yield from _flatten_profile_values(nested)
+    elif value is not None:
+        yield str(value)
+
+
+def _normalize(text):
+    return re.sub(r"[^a-z0-9а-яёђчћџžšđ]+", " ", str(text).lower()).strip()
+
+
+def _mentioned_profile_skill(text):
+    normalized_text = _normalize(text)
+    if not normalized_text:
+        return None
+    for value in _flatten_profile_values(PROFILE.get("skills") or {}):
+        normalized_value = _normalize(value)
+        if normalized_value and re.search(r"(?<!\w)" + re.escape(normalized_value) + r"(?!\w)", normalized_text):
+            return value
     return None
 
 
@@ -103,11 +108,14 @@ def build_safe_auto_reply(text, result):
                 return f"Nalazim se u {location}. Govorim: {language_text}." if language_text else f"Nalazim se u {location}."
             return f"I’m based in {location}. I speak {language_text}." if language_text else f"I’m based in {location}."
         location = str(PROFILE.get("location") or "my current location")
+        preference = str(PROFILE.get("work_preference") or "").replace("_", " ").strip()
+        if not preference:
+            return None
         if lang == "ru":
-            return f"Я нахожусь в {location} и рассматриваю полностью удалённые позиции."
+            return f"Я нахожусь в {location} и рассматриваю {preference} позиции."
         if lang == "sr":
-            return f"Nalazim se u {location} i trenutno razmatram isključivo potpuno remote pozicije."
-        return f"I’m based in {location} and currently considering fully remote opportunities."
+            return f"Nalazim se u {location} i trenutno razmatram {preference} pozicije."
+        return f"I’m based in {location} and currently considering {preference} opportunities."
 
     if intent == "work_format_question":
         if not _about_candidate(text):
@@ -124,7 +132,7 @@ def build_safe_auto_reply(text, result):
     if intent == "skill_question":
         if not _about_candidate(text):
             return None
-        skill = _mentioned_skill(text) or _mentioned_skill(" ".join(result.get("job", {}).get("technologies") or []))
+        skill = _mentioned_profile_skill(text) or _mentioned_profile_skill(" ".join(result.get("job", {}).get("technologies") or []))
         if not skill or not _has_profile_skill(skill):
             return None
         return _skill_reply(skill, lang)
@@ -161,7 +169,6 @@ def build_safe_auto_reply(text, result):
                 return "Trenutno razmatram sledeće pozicije: {}.".format(roles)
             return "I’m currently considering roles such as {}.".format(roles)
         if any(marker in text_lower for marker in language_markers):
-            languages = PROFILE.get("languages") or {}
             languages = PROFILE.get("languages") or {}
             language_text = ", ".join(f"{k} ({v})" for k, v in languages.items())
             if lang == "ru":
