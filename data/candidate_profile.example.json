@@ -1,0 +1,25 @@
+{
+  "name": "Your Name",
+  "title": "Your Professional Title",
+  "location": "Your Country",
+  "timezone": "Your Timezone",
+  "work_preference": "fully_remote",
+  "target_roles": [
+    "Your target role"
+  ],
+  "experience": "Describe your experience here",
+  "domains": [
+    "Your domain"
+  ],
+  "skills": {
+    "dwh": [],
+    "sql": [],
+    "data_quality": [],
+    "bi": [],
+    "programming": [],
+    "tools": []
+  },
+  "languages": {
+    "English": "fluent"
+  }
+}
