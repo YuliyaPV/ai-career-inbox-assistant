@@ -409,6 +409,15 @@ def notify_admin(admin_chat_id, text, result, pending_id, conversation_id):
     )
 
 
+def configured_admin_chat_id():
+    return os.environ.get("ADMIN_CHAT_ID", "").strip()
+
+
+def is_authorized_admin(chat_id):
+    configured = configured_admin_chat_id()
+    return bool(configured) and str(configured) == str(chat_id)
+
+
 def auto_reply_is_enabled():
     return get_setting("auto_reply_enabled", "false").lower() == "true"
 
@@ -487,6 +496,10 @@ def handle_business_message(message):
 
     if not admin_chat_id or not connection_id or not chat_id:
         print("Business message skipped: missing admin/connection/chat", flush=True)
+        return
+
+    if not is_authorized_admin(admin_chat_id):
+        print("Business message skipped: ADMIN_CHAT_ID is not configured or does not match", flush=True)
         return
 
     conversation = get_or_create_conversation(chat_id, connection_id)
@@ -603,7 +616,9 @@ def handle_callback(query):
     if not admin_chat_id:
         return
 
-    if not admin_chat_id:
+    # Callback buttons are part of the private admin interface too.
+    # Do not process a forged callback from another Telegram chat.
+    if not is_authorized_admin(admin_chat_id):
         return
 
     if data.startswith("auto:"):
@@ -903,8 +918,7 @@ def handle_admin_message(message):
     if not admin_chat_id or not text:
         return
 
-    configured_admin = get_setting("admin_chat_id")
-    if configured_admin and str(configured_admin) != str(admin_chat_id):
+    if not is_authorized_admin(admin_chat_id):
         return
 
     edit_state = get_edit_state(admin_chat_id)
@@ -919,22 +933,38 @@ def handle_admin_message(message):
             clear_edit_state(admin_chat_id)
             return
 
-        sent = send_message(
-            conversation["chat_id"],
-            text,
-            business_connection_id=conversation["business_connection_id"],
-        )
-        sent_message_id = (
-            sent.get("message_id") if isinstance(sent, dict) else None
-        )
-        add_message(
-            conversation["id"],
-            "outbound",
-            text,
-            sent_message_id,
-        )
-        set_process_status(conversation["id"], "WAITING_RECRUITER")
-        clear_edit_state(admin_chat_id)
+        if not claim_pending(pending["id"]):
+            clear_edit_state(admin_chat_id)
+            send_message(admin_chat_id, "ℹ️ This draft has already been handled or sent.")
+            return
+
+        try:
+            sent = send_message(
+                conversation["chat_id"],
+                text,
+                business_connection_id=conversation["business_connection_id"],
+            )
+            sent_message_id = (
+                sent.get("message_id") if isinstance(sent, dict) else None
+            )
+            add_message(
+                conversation["id"],
+                "outbound",
+                text,
+                sent_message_id,
+            )
+            mark_pending_sent(pending["id"])
+            set_process_status(conversation["id"], "WAITING_RECRUITER")
+            clear_edit_state(admin_chat_id)
+        except Exception:
+            connection = __import__("storage").conn()
+            connection.execute(
+                "UPDATE pending SET state='PENDING', handled_at=NULL WHERE id=?",
+                (pending["id"],),
+            )
+            connection.commit()
+            connection.close()
+            raise
         send_message(
             admin_chat_id,
             "✅ Edited reply sent and saved as outbound history.",

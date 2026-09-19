@@ -127,6 +127,8 @@ to:
 
 and set your own credentials.
 
+`ADMIN_CHAT_ID` is required for the private admin interface. Only that Telegram chat can use admin commands or operate the Career Inbox.
+
 See the [Configuration](#configuration) section below.
 
 ### Important
@@ -155,6 +157,7 @@ Copy `.env.example` to `.env` and set:
 BOT_TOKEN=...
 OPENAI_API_KEY=...
 OPENAI_MODEL=gpt-5.6-luna
+ADMIN_CHAT_ID=...
 ```
 
 Never commit `.env`, Telegram bot tokens, API keys, database files, or private conversation history.

@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 *.sqlite
 *.sqlite3
+
+data/candidate_profile.json
+data/reply_policy.json
