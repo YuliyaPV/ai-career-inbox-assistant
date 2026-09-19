@@ -1,0 +1,27 @@
+{
+  "mode": "copilot",
+  "language_matching": {
+    "enabled": true,
+    "rules": {
+      "russian": "reply_in_russian",
+      "english": "reply_in_english",
+      "serbian": "reply_in_serbian_if_possible",
+      "mixed": "reply_in_dominant_language",
+      "unclear": "reply_in_english"
+    }
+  },
+  "rules": {
+    "never_invent_experience": true,
+    "unknown_profile_fact": "ask_user",
+    "salary": "ask_user",
+    "interview_availability": "ask_user",
+    "relocation": "draft_decline",
+    "hybrid_or_office": "draft_decline",
+    "sensitive_information": "escalate"
+  },
+  "auto_reply": {
+    "enabled_by_default": false,
+    "allow_only_confirmed_profile_facts": true,
+    "mixed_known_and_unknown_question": "ask_user"
+  }
+}
