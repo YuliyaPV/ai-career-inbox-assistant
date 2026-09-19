@@ -616,7 +616,9 @@ def handle_callback(query):
     if not admin_chat_id:
         return
 
-    if not admin_chat_id:
+    # Callback buttons are part of the private admin interface too.
+    # Do not process a forged callback from another Telegram chat.
+    if not is_authorized_admin(admin_chat_id):
         return
 
     if data.startswith("auto:"):
