@@ -1,6 +1,0 @@
-bot.db
-.env
-__pycache__/
-*.pyc
-*.sqlite
-*.sqlite3
